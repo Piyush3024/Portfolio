@@ -34,7 +34,8 @@
     "prisma": "^6.5.0",
     "react-hot-toast": "^2.5.2",
     "react-router-dom": "^7.4.1",
-    "slugify": "^1.6.6"
+    "slugify": "^1.6.6",
+    "sqlite3": "^5.1.7"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

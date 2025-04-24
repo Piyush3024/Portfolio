@@ -16,6 +16,7 @@ import AdminUserManagement from "./pages/admin/UserPage";
 import ProjectsManage from "./pages/admin/ProjectsManage";
 import PostsManage from "./pages/admin/PostsManage";
 import CommentsManage from "./pages/admin/CommentsManage";
+import { useState, useEffect } from 'react';
 
 function App() {
   const location = useLocation();
@@ -27,7 +28,37 @@ function App() {
 
   // console.log("User :", user?.role?.name);
 
+  // Add a test component to verify connection
+  function ConnectionTest() {
+    const [status, setStatus] = useState({ loading: true, data: null, error: null });
 
+    useEffect(() => {
+      const testConnection = async () => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/test-db`);
+          const data = await response.json();
+          setStatus({ loading: false, data, error: null });
+        } catch (error) {
+          setStatus({ loading: false, data: null, error: error.message });
+        }
+      };
+
+      testConnection();
+    }, []);
+
+    if (status.loading) return <div>Testing connection...</div>;
+    if (status.error) return <div className="text-red-500">Error: {status.error}</div>;
+    
+    return (
+      <div className="p-4 bg-green-100 rounded mb-4">
+        <h3 className="font-bold">Connection Test</h3>
+        <p>Status: {status.data?.success ? 'Connected' : 'Failed'}</p>
+        <p>Message: {status.data?.message}</p>
+        <p>Environment: {status.data?.env?.nodeEnv}</p>
+        <p>API URL: {import.meta.env.VITE_API_URL}</p>
+      </div>
+    );
+  }
 
   // if (checkingAuth) {
   //   return <LoadingSpinner />;
@@ -46,7 +77,13 @@ function App() {
       <div className="relative z-10 pt-20">
         {isAdmin() ? <AdminNavbar/> : <Navbar />}
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={
+            <>
+              {/* Add this for testing, remove after confirming connection */}
+              <ConnectionTest />
+              <HomePage />
+            </>
+          } />
 
           <Route
             path="/signup"
@@ -84,7 +121,7 @@ function App() {
             path="/adminComment"
             element={isAdmin() ? <CommentsManage /> : <Navigate to="/" />}
           />
-     
+   
           <Route path="/about" element={<AboutPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/contact" element={<ContactPage />} />
