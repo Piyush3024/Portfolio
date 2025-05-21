@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { toast, Toaster } from "react-hot-toast";
 import useContactStore from "../stores/useContactStore";
 import { format } from "date-fns";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 
 function AdminPage() {
-  const { contacts, fetchContacts, deleteContact, isLoading, error } = useContactStore();
+  const { contacts, fetchContacts, deleteContact, isLoading, error } =
+    useContactStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState({
     startDate: "",
@@ -18,9 +20,12 @@ function AdminPage() {
     key: "created_at",
     direction: "desc",
   });
-  
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const contactsPerPage = 10;
+
   const pageRef = useRef(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+ 
 
   // Fetch contacts on component mount
   useEffect(() => {
@@ -50,7 +55,8 @@ function AdminPage() {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (contact) =>
-          (contact.full_name && contact.full_name.toLowerCase().includes(term)) ||
+          (contact.full_name &&
+            contact.full_name.toLowerCase().includes(term)) ||
           (contact.email && contact.email.toLowerCase().includes(term)) ||
           (contact.subject && contact.subject.toLowerCase().includes(term)) ||
           (contact.message && contact.message.toLowerCase().includes(term)) ||
@@ -73,22 +79,7 @@ function AdminPage() {
   }, [contacts, searchTerm, dateFilter, sortConfig]);
 
   // Track mouse position for spotlight effect
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (pageRef.current) {
-        setMousePosition({
-          x: e.clientX,
-          y: e.clientY,
-        });
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
-  }, []);
+ 
 
   const handleSort = (key) => {
     setSortConfig({
@@ -125,22 +116,24 @@ function AdminPage() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const confirmDelete = async () => {
-    if (!contactToDelete) return;
-    
-    try {
-      await deleteContact(contactToDelete.contact_id);
-      toast.success("Contact deleted successfully");
-      if (selectedContact?.contact_id === contactToDelete.contact_id) {
-        setSelectedContact(null);
-      }
-    } catch (err) {
-      toast.error("Failed to delete contact");
-    } finally {
-      setIsDeleteConfirmOpen(false);
-      setContactToDelete(null);
+ const confirmDelete = async () => {
+  if (!contactToDelete) return;
+  
+  setIsDeleting(true);
+  try {
+    await deleteContact(contactToDelete.contact_id);
+    toast.success("Contact deleted successfully");
+    if (selectedContact?.contact_id === contactToDelete.contact_id) {
+      setSelectedContact(null);
     }
-  };
+  } catch (err) {
+    toast.error("Failed to delete contact");
+  } finally {
+    setIsDeleting(false);
+    setIsDeleteConfirmOpen(false);
+    setContactToDelete(null);
+  }
+};
 
   const cancelDelete = () => {
     setIsDeleteConfirmOpen(false);
@@ -163,20 +156,83 @@ function AdminPage() {
       return "Invalid date";
     }
   };
+  // Pagination calculations
+  const indexOfLastContact = currentPage * contactsPerPage;
+  const indexOfFirstContact = indexOfLastContact - contactsPerPage;
+  const currentContacts = filteredContacts.slice(
+    indexOfFirstContact,
+    indexOfLastContact
+  );
+  const totalPages = Math.ceil(filteredContacts.length / contactsPerPage);
+
+  // Function to handle page change
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Function to generate page numbers array
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5; // Number of page numbers to show
+
+    if (totalPages <= maxVisiblePages) {
+      // If total pages are less than maxVisiblePages, show all
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first page
+      pageNumbers.push(1);
+
+      // Calculate start and end of visible page numbers
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+
+      // Adjust if at the start
+      if (currentPage <= 2) {
+        end = 4;
+      }
+      // Adjust if at the end
+      if (currentPage >= totalPages - 1) {
+        start = totalPages - 3;
+      }
+
+      // Add ellipsis if needed
+      if (start > 2) {
+        pageNumbers.push("...");
+      }
+
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i);
+      }
+
+      // Add ellipsis if needed
+      if (end < totalPages - 1) {
+        pageNumbers.push("...");
+      }
+
+      // Always show last page
+      pageNumbers.push(totalPages);
+    }
+
+    return pageNumbers;
+  };
 
   return (
     <div
       ref={pageRef}
-      className="md:min-h-[calc(100vh-7rem)] h-[85vh] py-6 md:overflow-hidden overflow-y-auto md:mt-0 -mt-5 w-full md:w-screen md:absolute left-0 md:top-12 relative flex flex-col px-4 md:px-8 lg:px-16"
-      style={{
-        background: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(6, 182, 212, 0.3) 0%, rgba(17, 24, 39, 0.95) 45%)`,
-      }}
+      className="  py-6  overflow-y-auto  max-w-full  relative flex flex-col px-4 md:px-8 lg:px-16"
+     
     >
       <Toaster />
-      
-      <div className="flex flex-col h-full">
+
+      <div className="flex flex-col mt-14">
         <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-white">Contact Management</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-white">
+            Contact Management
+          </h1>
           <p className="text-gray-300 mt-2">
             View, search, and manage all contact submissions
           </p>
@@ -210,10 +266,12 @@ function AdminPage() {
                 </svg>
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
               <div>
-                <label className="block text-gray-300 text-sm mb-1">Start Date</label>
+                <label className="block text-gray-300 text-sm mb-1">
+                  Start Date
+                </label>
                 <input
                   type="date"
                   name="startDate"
@@ -223,7 +281,9 @@ function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-gray-300 text-sm mb-1">End Date</label>
+                <label className="block text-gray-300 text-sm mb-1">
+                  End Date
+                </label>
                 <input
                   type="date"
                   name="endDate"
@@ -242,10 +302,18 @@ function AdminPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <div className="text-gray-300">
-              {filteredContacts.length} {filteredContacts.length === 1 ? "contact" : "contacts"} found
+              {filteredContacts.length}{" "}
+              {filteredContacts.length === 1 ? "contact" : "contacts"} found
+              {filteredContacts.length > 0 && (
+                <span className="ml-2">
+                  (Showing {indexOfFirstContact + 1}-
+                  {Math.min(indexOfLastContact, filteredContacts.length)} of{" "}
+                  {filteredContacts.length})
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -257,9 +325,7 @@ function AdminPage() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
             </div>
           ) : error ? (
-            <div className="text-red-400 p-4 text-center">
-              {error}
-            </div>
+            <div className="text-red-400 p-4 text-center">{error}</div>
           ) : filteredContacts.length === 0 ? (
             <div className="text-gray-400 p-8 text-center">
               No contacts found matching your criteria
@@ -269,7 +335,7 @@ function AdminPage() {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800 sticky top-0">
                   <tr>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("full_name")}
                     >
@@ -288,7 +354,7 @@ function AdminPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Subject
                     </th>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("created_at")}
                     >
@@ -307,7 +373,7 @@ function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-gray-900 bg-opacity-50 divide-y divide-gray-800">
-                  {filteredContacts.map((contact) => (
+                  {currentContacts.map((contact) => (
                     <tr key={contact.contact_id} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-200">
@@ -320,11 +386,13 @@ function AdminPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-300">{contact.email}</div>
+                        <div className="text-sm text-gray-300">
+                          {contact.email}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-300 truncate max-w-xs">
-                          {contact.subject || 'No subject'}
+                          {contact.subject || "No subject"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -350,6 +418,82 @@ function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              {/* Pagination Controls */}
+              {filteredContacts.length > 0 && (
+                <div className="flex justify-center items-center space-x-2 mt-8 mb-4">
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === 1
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-cyan-400 text-gray-900 hover:bg-cyan-500"
+                    } transition-colors duration-300`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Page Numbers */}
+                  {getPageNumbers().map((number, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        typeof number === "number" && handlePageChange(number)
+                      }
+                      className={`px-3 py-1 rounded-md ${
+                        number === currentPage
+                          ? "bg-cyan-400 text-gray-900"
+                          : number === "..."
+                          ? "bg-transparent text-gray-400 cursor-default"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      } transition-colors duration-300`}
+                      disabled={number === "..."}
+                    >
+                      {number}
+                    </button>
+                  ))}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === totalPages
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-cyan-400 text-gray-900 hover:bg-cyan-500"
+                    } transition-colors duration-300`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -386,30 +530,48 @@ function AdminPage() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Name</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Name
+                  </label>
                   <div className="text-white">{selectedContact.full_name}</div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Email</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Email
+                  </label>
                   <div className="text-white">{selectedContact.email}</div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Phone</label>
-                  <div className="text-white">{selectedContact.phone || 'Not provided'}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Phone
+                  </label>
+                  <div className="text-white">
+                    {selectedContact.phone || "Not provided"}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Date Submitted</label>
-                  <div className="text-white">{formatDate(selectedContact.created_at)}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Date Submitted
+                  </label>
+                  <div className="text-white">
+                    {formatDate(selectedContact.created_at)}
+                  </div>
                 </div>
               </div>
-              
+
               <div className="mb-6">
-                <label className="block text-gray-400 text-sm mb-1">Subject</label>
-                <div className="text-white">{selectedContact.subject || 'No subject'}</div>
+                <label className="block text-gray-400 text-sm mb-1">
+                  Subject
+                </label>
+                <div className="text-white">
+                  {selectedContact.subject || "No subject"}
+                </div>
               </div>
-              
+
               <div>
-                <label className="block text-gray-400 text-sm mb-1">Message</label>
+                <label className="block text-gray-400 text-sm mb-1">
+                  Message
+                </label>
                 <div className="bg-gray-800 p-4 rounded-md text-gray-200 whitespace-pre-wrap">
                   {selectedContact.message}
                 </div>
@@ -434,32 +596,18 @@ function AdminPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              Confirm Delete
-            </h3>
-            <p className="text-gray-300 mb-6">
-              Are you sure you want to delete this contact from {contactToDelete?.full_name}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={cancelDelete}
-                className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    {isDeleteConfirmOpen && (
+  <DeleteConfirmationModal
+    isOpen={isDeleteConfirmOpen}
+    onClose={cancelDelete}
+    onConfirm={confirmDelete}
+    isLoading={isDeleting}
+    title="Confirm Delete"
+    message={`Are you sure you want to delete this contact from ${contactToDelete?.full_name}? This action cannot be undone.`}
+    confirmButtonText="Delete"
+    cancelButtonText="Cancel"
+  />
+)}
     </div>
   );
 }

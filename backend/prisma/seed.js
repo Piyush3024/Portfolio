@@ -1,95 +1,80 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create Nepal as a country
-  const nepal = await prisma.country.create({
-    data: {
-      country_id: 1,
-      name: 'Nepal',
-      capital: 'Kathmandu',
-      continent: 'Asia',
-      official_language: 'Nepali',
-      currency_code: 'NPR',
-    },
-  });
-
-  // Create Bagmati Province
-  const bagmati = await prisma.province.create({
-    data: {
-      province_id: 1,
-      country_id: nepal.country_id,
-      name: 'Bagmati',
-    },
-  });
-
-  // Create Kathmandu District
-  const kathmandu = await prisma.district.create({
-    data: {
-      district_id: 1,
-      province_id: bagmati.province_id,
-      name: 'Kathmandu',
-    },
-  });
-
-  // Create Kathmandu City
-  const kathmanduCity = await prisma.city.create({
-    data: {
-      city_id: 1,
-      district_id: kathmandu.district_id,
-      name: 'Kathmandu',
-      population: 1000000,
-      postal_code: '44600',
-    },
-  });
-
-  // Create some areas in Kathmandu
-  const areas = await Promise.all([
-    prisma.area.create({
-      data: {
-        area_id: 1,
-        city_id: kathmanduCity.city_id,
-        name: 'Thamel',
-        type: 'COMMERCIAL',
-        ward_no: 26,
-      },
-    }),
-    prisma.area.create({
-      data: {
-        area_id: 2,
-        city_id: kathmanduCity.city_id,
-        name: 'Baneshwor',
-        type: 'RESIDENTIAL',
-        ward_no: 32,
-      },
-    }),
-    prisma.area.create({
-      data: {
-        area_id: 3,
-        city_id: kathmanduCity.city_id,
-        name: 'Pulchowk',
-        type: 'MIXED',
-        ward_no: 15,
-      },
-    }),
-  ]);
-
-  // Create roles
+  // Upsert roles to avoid unique constraint errors
   const roles = await Promise.all([
-    prisma.role.create({
-      data: {
+    prisma.role.upsert({
+      where: { role_id: 1 },
+      update: { name: 'ADMIN' },
+      create: {
         role_id: 1,
         name: 'ADMIN',
       },
     }),
-    prisma.role.create({
-      data: {
+    prisma.role.upsert({
+      where: { role_id: 2 },
+      update: { name: 'USER' },
+      create: {
         role_id: 2,
         name: 'USER',
       },
     }),
   ]);
+
+  // Hash password for admin user
+  const hashedPassword = await bcrypt.hash('piyush@3024', 10);
+
+  // Create admin user with new fields
+  const adminUser = await prisma.user.create({
+    data: {
+      username: 'piyush',
+      email: 'piyushbhul3024@gmail.com',
+      password: hashedPassword,
+      role_id: 1,
+      full_name: 'Piyush Bhul',
+      phone: '9769830588',
+      oauth_provider: null,
+      oauth_id: null,
+      reset_token: null,
+      reset_token_expiry: null,
+    },
+  });
+
+  // Create a test project
+  const project = await prisma.project.create({
+    data: {
+      name: 'Sample Project',
+      description: 'This is a sample project created during database seeding.',
+      githubUrl: 'https://github.com/example/sample-project',
+      liveUrl: 'https://example.com/sample-project',
+      imageUrl: 'https://via.placeholder.com/300',
+      technologies: 'Node.js, React, Prisma, PostgreSQL',
+      userId: adminUser.user_id,
+    },
+  });
+
+  // Create a test blog post
+  const post = await prisma.post.create({
+    data: {
+      title: 'Getting Started with Prisma',
+      slug: 'getting-started-with-prisma',
+      content: 'This is a sample blog post about getting started with Prisma ORM.',
+      published: true,
+      authorId: adminUser.user_id,
+    },
+  });
+
+  // Create a test comment
+  const comment = await prisma.comment.create({
+    data: {
+      content: 'This is a sample comment on the blog post.',
+      authorId: adminUser.user_id,
+      postId: post.id,
+    },
+  });
 
   console.log('Seed data created successfully');
 }
@@ -101,4 +86,4 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-  }); 
+  });

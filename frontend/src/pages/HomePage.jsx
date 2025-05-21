@@ -1,177 +1,206 @@
-import  { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import useAuthStore from "../stores/useAuthStore";
 import useProjectStore from "../stores/useProjectStore";
-
+import usePostStore from "../stores/usePostStore";
 
 export default function HomePage() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [typingText, setTypingText] = useState("Frontend Developer!");
+  //
+  const [typingText, setTypingText] = useState("");
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [currentLetterIndex, setCurrentLetterIndex] = useState(0);
   const pageRef = useRef(null);
   const typingTexts = [
     "MERN Stack Developer!",
     "Full Stack Developer!",
     "Next.js Developer!",
     "Python Developer!",
-    "Cyber Security Enthusiast!",
+    "AI Integrated Web Developer!",
   ];
 
   const { isAuthenticated } = useAuthStore();
-  const { fetchProjects, projects } = useProjectStore();
+  const { fetchProjects } = useProjectStore();
+  const { fetchPosts } = usePostStore();
 
-  // Track mouse position for spotlight effect
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (pageRef.current) {
-        setMousePosition({
-          x: e.clientX,
-          y: e.clientY,
-        });
-      }
-    };
+  const [isTyping, setIsTyping] = useState(true);
 
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
-  }, []);
-
+  // Fetch projects and posts
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects])
-  
+    fetchPosts();
+  }, [fetchProjects, fetchPosts]);
 
-
-  // Typing animation effect
+  // Typewriter animation effect
   useEffect(() => {
-    let currentIndex = 0;
+    const currentWord = typingTexts[currentWordIndex];
+    let timeoutId;
 
-    const changeText = () => {
-      currentIndex = (currentIndex + 1) % typingTexts.length;
-      setTypingText(typingTexts[currentIndex]);
-    };
+    if (isTyping) {
+      if (currentLetterIndex < currentWord.length) {
+        timeoutId = setTimeout(() => {
+          setTypingText(currentWord.slice(0, currentLetterIndex + 1));
+          setCurrentLetterIndex(currentLetterIndex + 1);
+        }, 100);
+      } else {
+        timeoutId = setTimeout(() => {
+          setIsTyping(false);
+        }, 1000);
+      }
+    } else {
+      if (currentLetterIndex > 0) {
+        timeoutId = setTimeout(() => {
+          setTypingText(currentWord.slice(0, currentLetterIndex - 1));
+          setCurrentLetterIndex(currentLetterIndex - 1);
+        }, 100);
+      } else {
+        timeoutId = setTimeout(() => {
+          setTypingText("");
+          setCurrentWordIndex((prev) => (prev + 1) % typingTexts.length);
+          setIsTyping(true);
+        }, 500);
+      }
+    }
 
-    const intervalId = setInterval(changeText, 3000);
-
-    return () => clearInterval(intervalId);
-  }, []);
+    return () => clearTimeout(timeoutId);
+  }, [currentLetterIndex, currentWordIndex, typingTexts, isTyping]);
 
   return (
-    <div
-      ref={pageRef}
-      className="md:min-h-[calc(100vh-4rem)] md:mt-0 -mt-5 h-[calc(100vh-8rem)] w-full md:h-[100vh] md:w-[100vw] md:absolute left-0 md:top-0 relative flex items-center justify-center px-4 md:px-8 lg:px-16 py-8 sm:py-16"
-      style={{
-        background: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(6, 182, 212, 0.3) 0%, rgba(17, 24, 39, 0.95) 45%)`,
-      }}
-    >
-      <div className="w-full h-full md:overflow-hidden overflow-y-auto max-w-6xl flex flex-col md:flex-row items-center gap-8 lg:gap-16">
-        {/* Left side - Introduction */}
-        <div className="w-full md:w-1/2 order-2 md:order-1">
-          <div
-            className="p-6 sm:p-8 rounded-lg mt-4 bg-opacity-30 backdrop-blur-sm"
-            style={{
-              background: `radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.4) 0%, rgba(17, 24, 39, 0.8) 70%)`,
-              boxShadow: "0 4px 30px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <h2 className="text-2xl md:text-3xl font-bold text-white">
-              Hello, It&apos;s Me
-            </h2>
-            <h1 className="text-3xl md:text-5xl font-bold text-white mt-2">
-              Piyush <span className="text-cyan-400">Bhul</span>
-            </h1>
+    <>
+      <Helmet>
+        <link rel="preload" href="/profile.webp" as="image" />
+      </Helmet>
+      <div
+        ref={pageRef}
+        className="max-w-full md:mt-0 mt-8  min-h-screen relative flex items-center justify-center px-4 md:px-8 lg:px-16 py-8 sm:py-16"
+      >
+        <div className="w-full h-full md:overflow-hidden overflow-y-auto max-w-6xl flex flex-col md:flex-row items-center gap-8 lg:gap-16">
+          {/* Left side - Introduction */}
+          <div className="w-full md:w-1/2 order-2 md:order-1">
+            <div
+              className="p-6 sm:p-8 rounded-lg mt-4 bg-opacity-30 backdrop-blur-sm animate-fadeIn relative"
+              style={{
+                background: `radial-gradient(circle at 30% 40%, rgba(6, 182, 212, 0.08) 0%, rgba(17, 24, 39, 0.7) 60%)`,
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              {/* Dark/light mode adaptive overlay */}
+              <div
+                className="absolute inset-0 rounded-lg pointer-events-none hidden dark:block"
+                style={{
+                  background:
+                    "radial-gradient(circle at 30% 40%, rgba(6, 182, 212, 0.12) 0%, rgba(17, 24, 39, 0.5) 60%)",
+                }}
+              />
+              <div
+                className="absolute inset-0 rounded-lg pointer-events-none block dark:hidden"
+                style={{
+                  background:
+                    "radial-gradient(circle at 30% 40%, rgba(6, 182, 212, 0.05) 0%, rgba(241, 245, 249, 0.6) 60%)",
+                  boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.1)",
+                }}
+              />
 
-            <div className="h-10 mt-4">
-              <h3 className="typing-text text-xl md:text-2xl font-semibold overflow-hidden border-r-2 border-cyan-400 whitespace-nowrap inline-block pr-1 animate-pulse">
-                {typingText}
-              </h3>
-            </div>
+              {/* Content goes here - with dark/light mode adaptive classes */}
+              <div className="relative z-10">
+                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white">
+                  Piyush{" "}
+                  <span className="text-cyan-600 dark:text-cyan-400">Bhul</span>
+                </h1>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mt-2">
+                  Hello, It&apos;s Me
+                </h2>
 
-            <p className="mt-5 text-gray-200 leading-relaxed">
-              I am a passionate full-stack developer with expertise in frontend
-              (React, Next.js), backend (Node.js, Express), and databases. I
-              combine technical expertise with problem-solving creativity to
-              develop efficient, user-friendly, and future-ready solutions.
-            </p>
+                <div className="h-10 mt-4">
+                  <h3
+                    className="typing-text text-xl md:text-2xl font-semibold overflow-hidden border-r-2 border-cyan-500 dark:border-cyan-400 whitespace-nowrap inline-block pr-1 animate-pulse text-cyan-600 dark:text-cyan-400"
+                    style={{ color: "inherit" }}
+                  >
+                    {typingText}
+                  </h3>
+                </div>
 
-            <div className="flex flex-wrap gap-4 mt-8">
-              {isAuthenticated ? (
-                <Link
-                  to="/about"
-                  className="px-6 py-3 bg-cyan-400 text-gray-900 font-semibold rounded-md hover:bg-cyan-500 transition-all duration-300 transform hover:scale-105"
-                >
-                  Get Started
-                </Link>
-               ) : ( 
-                <Link
-                  to="/login"
-                  className="px-6 py-3 bg-cyan-400 text-gray-900 font-semibold rounded-md hover:bg-cyan-500 transition-all duration-300 transform hover:scale-105"
-                >
-                  Get Started
-                </Link>
-               )} 
+                <p className="mt-5 text-gray-700 dark:text-gray-200 leading-relaxed text-sm md:text-base">
+                  I am a passionate full-stack developer with expertise in
+                  frontend (React, Next.js), backend (Node.js, Express), and
+                  databases. I combine technical expertise with problem-solving
+                  creativity to develop efficient, user-friendly, and
+                  future-ready solutions. Check out my blogs for technical
+                  insights!
+                </p>
 
-              <Link
-                to="/contact"
-                className="px-6 py-3 bg-transparent text-cyan-400 font-semibold rounded-md border border-cyan-400 hover:bg-cyan-400/10 transition-all duration-300 transform hover:scale-105"
-              >
-                Hire Me
-              </Link>
-            </div>
+                <div className="flex flex-wrap gap-4 mt-8">
+                  {isAuthenticated ? (
+                    <Link
+                      to="/about"
+                      className="px-6 py-3 bg-cyan-500 text-white dark:text-gray-900 font-semibold rounded-md hover:bg-cyan-600 transition-all duration-300 transform hover:scale-105"
+                      aria-label="Get Started with Piyush Bhul's Portfolio"
+                    >
+                      Get Started
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="px-6 py-3 bg-cyan-500 text-white dark:text-gray-900 font-semibold rounded-md hover:bg-cyan-600 transition-all duration-300 transform hover:scale-105"
+                      aria-label="Log in to Piyush Bhul's Portfolio"
+                    >
+                      Get Started
+                    </Link>
+                  )}
 
-            <div className="flex space-x-6 mt-8">
-              <a
-                href="https://www.facebook.com/profile.php?id=100068198153843"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 text-xl hover:text-cyan-300 transition-all duration-300"
-              >
-                <i className="fab fa-facebook"></i>
-              </a>
-              <a
-                href="https://x.com/PiyushBhul"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 text-xl hover:text-cyan-300 transition-all duration-300"
-              >
-                <i className="fab fa-twitter"></i>
-              </a>
-              <a
-                href="https://www.instagram.com/kumarpiyush3024"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 text-xl hover:text-cyan-300 transition-all duration-300"
-              >
-                <i className="fab fa-instagram"></i>
-              </a>
-              <a
-                href="https://www.linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 text-xl hover:text-cyan-300 transition-all duration-300"
-              >
-                <i className="fab fa-linkedin"></i>
-              </a>
+                  <Link
+                    to="/blog"
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white dark:text-gray-900 font-semibold rounded-md hover:from-cyan-600 hover:to-teal-600 transition-all duration-300 transform hover:scale-105"
+                    aria-label="Navigate to blog posts"
+                  >
+                    Read Articles
+                  </Link>
+
+                  <Link
+                    to="/contact"
+                    className="px-6 py-3 bg-transparent text-cyan-600 dark:text-cyan-400 font-semibold rounded-md border border-cyan-600 dark:border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-400/10 transition-all duration-300 transform hover:scale-105"
+                    aria-label="Contact Piyush Bhul for Hiring"
+                  >
+                    Hire Me
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right side - Photo */}
-        <div className="w-full md:w-1/2 flex justify-center md:justify-end order-1 md:order-2">
-          <div className="relative">
-            <div className="absolute inset-0 border-4 border-cyan-400 rounded-lg transform rotate-12 animate-pulse"></div>
-            <div className="relative rounded-lg overflow-hidden w-64 h-64 md:w-80 md:h-80">
-              {/* Replace with standard img tag instead of Next.js Image component */}
-              <img
-                alt="Piyush Bhul"
-                className="h-full object-cover w-full"
-                src="/profile.jpg"
-              />
+          {/* Right side - Photo */}
+          <div className="w-full md:w-2/5 flex justify-center md:justify-end order-1 md:order-2">
+            <div className="relative group">
+              <div
+                className="absolute inset-0 border-4 border-cyan-400 rounded-lg transform rotate-12 animate-pulse group-hover:rotate-[-30deg] group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:to-teal-500 group-hover:animate-none transition-all duration-500 flex items-center justify-center"
+                style={{
+                  boxShadow:
+                    "group-hover:0 0 20px rgba(6, 182, 212, 0.8), group-hover:0 0 40px rgba(13, 148, 136, 0.5)",
+                }}
+              >
+                <span
+                  className="text-white text-2xl font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  aria-hidden="true"
+                >
+                  Jhuni
+                </span>
+              </div>
+              <div className="relative rounded-lg overflow-hidden w-64 h-64 md:w-80 md:h-80 transition-transform duration-500 group-hover:-rotate-30 group-hover:scale-105">
+                <img
+                  alt="Piyush Bhul"
+                  className="h-full object-cover w-full"
+                  fetchPriority="high"
+                  src="/profile.webp"
+                  width="320"
+                  height="320"
+                  srcSet="/profile-lowres.webp 480w, /profile.webp 800w"
+                  sizes="(max-width: 768px) 480px, 800px"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

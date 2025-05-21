@@ -22,15 +22,45 @@ export const siteConfig = {
         label: "Contact",
         href: "/contact",
       },
-      // {
-      //   label: "Home",
-      //   href: "/home",
-      // },
-  
-      // {
-      //   label: "Admin",
-      //   href: "/admin",
-      // },
+     
+    ],
+    adminItems: [
+      {
+        label: "Contacts",
+        href: "/admin",
+      },
+      {
+        label: "Users",
+        href: "/adminUser",
+      },
+      {
+        label: "Projects",
+        href: "/adminProject",
+      },
+      {
+        label: "Posts",
+        href: "/adminPost",
+      },
+      {
+        label: "Comments",
+        href: "/adminComment",
+      },
+     
+    ],
+    footItems: [
+      {
+        label: "Home",
+        href: "/",
+      },
+      {
+        label: "About Us",
+        href: "/about",
+      },
+      {
+        label: "Contact",
+        href: "/contact",
+      },
+     
     ],
     navMenuItems: [
       {

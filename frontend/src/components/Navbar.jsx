@@ -1,25 +1,22 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast, Toaster } from "react-hot-toast";
 import {
-  TwitterIcon,
-  GithubIcon,
-  InstagramIcon,
-  JhuniIcon,
   MoonFilledIcon,
   SunFilledIcon,
+  JhuniIcon,
 } from "./icons";
 import { useTheme } from "../providers/ThemeProvider";
 import { siteConfig } from "../config/site";
-import useAuthStore from "../stores/useauthstore";
+import useAuthStore from "../stores/useAuthStore";
 
 const Navbar = () => {
   // Add state to control whether the menu is open
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Use the theme context
   const { theme, toggleTheme } = useTheme();
-  const { user,isAuthenticated, logout } = useAuthStore();
-  // console.log("User : ", user)
+  const { user, isAuthenticated, logout } = useAuthStore();
 
   // Function to close the menu
   const closeMenu = () => {
@@ -27,7 +24,7 @@ const Navbar = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full bg-gray-100 dark:bg-gray-900 bg-opacity-90 backdrop-blur-md shadow-lg z-40 transition-all duration-300 border-b border-gray-200 dark:border-emerald-800">
+    <header className=" w-full bg-gray-100 dark:bg-gray-900 bg-opacity-90 backdrop-blur-md shadow-lg z-40 transition-all duration-300 border-b border-gray-200 dark:border-emerald-800">
       <div className="container mx-auto px-4 py-3">
         <Toaster />
         <div className="flex justify-between items-center">
@@ -97,53 +94,22 @@ const Navbar = () => {
               ))}
             </ul>
 
-            {/* Social Icons */}
-            <div className="hidden sm:flex gap-2">
-              <Link
-                to={siteConfig.links.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Twitter"
-                className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300"
-              >
-                <TwitterIcon className="text-default-500" />
-              </Link>
-              <Link
-                to={siteConfig.links.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300"
-              >
-                <InstagramIcon className="text-default-500" />
-              </Link>
-              <Link
-                to={siteConfig.links.github}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Github"
-                className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300"
-              >
-                <GithubIcon className="text-default-500" />
-              </Link>
-
-              {/* Theme Toggle Button */}
-              <button
-                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                onClick={toggleTheme}
-                aria-label={
-                  theme === "dark"
-                    ? "Switch to light theme"
-                    : "Switch to dark theme"
-                }
-              >
-                {theme === "dark" ? (
-                  <SunFilledIcon className="text-yellow-300" size={20} />
-                ) : (
-                  <MoonFilledIcon className="text-gray-500" size={20} />
-                )}
-              </button>
-            </div>
+            {/* Theme Toggle Button */}
+            <button
+              className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
+              }
+            >
+              {theme === "dark" ? (
+                <SunFilledIcon className="text-yellow-300" size={20} />
+              ) : (
+                <MoonFilledIcon className="text-gray-500" size={20} />
+              )}
+            </button>
 
             {/* Auth Buttons */}
             <div className="hidden md:flex gap-2">
@@ -192,59 +158,26 @@ const Navbar = () => {
               </Link>
             ))}
 
-            {/* Mobile Social Icons */}
-            <div className="flex gap-4 mt-2">
-              <Link
-                to={siteConfig.links.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Twitter"
-                className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300"
-                onClick={closeMenu}
-              >
-                <TwitterIcon className="text-default-500" />
-              </Link>
-              <Link
-                to={siteConfig.links.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300"
-                onClick={closeMenu}
-              >
-                <InstagramIcon className="text-default-500" />
-              </Link>
-              <Link
-                to={siteConfig.links.github}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Github"
-                className="text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300"
-                onClick={closeMenu}
-              >
-                <GithubIcon className="text-default-500" />
-              </Link>
-
-              {/* Mobile Theme Toggle Button */}
-              <button
-                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                onClick={() => {
-                  toggleTheme();
-                  // Don't close the menu when toggling theme
-                }}
-                aria-label={
-                  theme === "dark"
-                    ? "Switch to light theme"
-                    : "Switch to dark theme"
-                }
-              >
-                {theme === "dark" ? (
-                  <SunFilledIcon className="text-yellow-300" size={20} />
-                ) : (
-                  <MoonFilledIcon className="text-gray-500" size={20} />
-                )}
-              </button>
-            </div>
+            {/* Mobile Theme Toggle Button */}
+            <button
+              className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out py-2"
+              onClick={() => {
+                toggleTheme();
+                // Don't close the menu when toggling theme
+              }}
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
+              }
+            >
+              {theme === "dark" ? (
+                <SunFilledIcon className="text-yellow-300" size={20} />
+              ) : (
+                <MoonFilledIcon className="text-gray-500" size={20} />
+              )}
+              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+            </button>
 
             {/* Mobile Auth Buttons */}
             <div className="flex gap-2 mt-2">
@@ -253,7 +186,7 @@ const Navbar = () => {
                   className="text-sm font-normal p-2 rounded-lg text-red-600 dark:text-red-400 border border-red-600 dark:border-red-400 bg-white dark:bg-gray-800 hover:bg-red-500 hover:text-white dark:hover:bg-red-500 dark:hover:text-white transition duration-300"
                   onClick={() => {
                     logout();
-                    closeMenu()
+                    closeMenu();
                     toast.success("Logout Successfully");
                   }}
                 >

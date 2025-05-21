@@ -1,0 +1,7 @@
+{
+    "name": "portfolio-frontend",
+    "compatibility_date": "2025-04-28",
+    "assets": {
+      "directory": "./dist"
+    }
+  }

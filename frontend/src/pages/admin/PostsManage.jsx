@@ -2,17 +2,27 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast, Toaster } from "react-hot-toast";
-import { Eye, Trash, Edit, Plus, Check, X, ToggleLeft, ToggleRight, MessageSquare } from "lucide-react";
+import {
+  Eye,
+  Trash,
+  Edit,
+  Plus,
+  Check,
+  X,
+  ToggleLeft,
+  ToggleRight,
+  MessageSquare,
+} from "lucide-react";
 import usePostStore from "../../stores/usePostStore";
 import useCommentStore from "../../stores/useCommentStore";
 import useMousePosition from "../../hooks/useMousePosition";
-// import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 function PostsManage() {
   const navigate = useNavigate();
   const pageRef = useRef(null);
   const mousePosition = useMousePosition(pageRef);
-  
+
   // Add missing state variables
   const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -24,17 +34,34 @@ function PostsManage() {
   const [postForm, setPostForm] = useState({
     title: "",
     content: "",
-    published: false
+    published: false,
   });
-  
-  const { posts, fetchPosts, deletePost, togglePublishStatus, isLoading, error, fetchPostById, updatePost, createPost } = usePostStore();
+
+  const {
+    posts,
+    fetchPosts,
+    deletePost,
+    togglePublishStatus,
+    isLoading,
+    error,
+    fetchPostById,
+    updatePost,
+    createPost,
+  } = usePostStore();
   const { comments, fetchComments } = useCommentStore();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" });
+  const [sortConfig, setSortConfig] = useState({
+    key: "createdAt",
+    direction: "desc",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 10;
+
   // const [showDeleteModal, setShowDeleteModal] = useState(false);
   // const [postToDelete, setPostToDelete] = useState(null);
-  
+
   // Fetch posts and comments on component mount
   useEffect(() => {
     fetchPosts();
@@ -42,8 +69,6 @@ function PostsManage() {
   }, [fetchPosts, fetchComments]);
 
   // console.log("Comments: ", comments)
-
-
 
   // Calculate comment counts - Fix the error by accessing comments.data
   // const commentCountByPost = comments && comments.data ? comments.data.reduce((acc, comment) => {
@@ -53,8 +78,7 @@ function PostsManage() {
 
   // Handle view comments
   const handleViewComments = (post) => {
-
-    navigate(`/adminComment`, { state: {post : post} });
+    navigate(`/adminComment`, { state: { post: post } });
   };
 
   // Add missing handler functions
@@ -64,9 +88,9 @@ function PostsManage() {
 
   const handleDateFilterChange = (e) => {
     const { name, value } = e.target;
-    setDateFilter(prev => ({
+    setDateFilter((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -100,7 +124,8 @@ function PostsManage() {
 
   const confirmDelete = async () => {
     if (!postToAction) return;
-    
+    setIsDeleting(true)
+
     try {
       await deletePost(postToAction.id);
       toast.success("Post deleted successfully");
@@ -110,6 +135,7 @@ function PostsManage() {
     } catch (err) {
       toast.error("Failed to delete post");
     } finally {
+      setIsDeleting(false);
       setIsDeleteConfirmOpen(false);
       setPostToAction(null);
     }
@@ -130,9 +156,9 @@ function PostsManage() {
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setPostForm(prev => ({
+    setPostForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -140,7 +166,7 @@ function PostsManage() {
     setPostForm({
       title: "",
       content: "",
-      published: false
+      published: false,
     });
     setIsEditMode(false);
     setIsPostFormOpen(true);
@@ -151,7 +177,7 @@ function PostsManage() {
       id: post.id,
       title: post.title || "",
       content: post.content || "",
-      published: post.published || false
+      published: post.published || false,
     });
     setIsEditMode(true);
     setIsPostFormOpen(true);
@@ -162,13 +188,13 @@ function PostsManage() {
     setPostForm({
       title: "",
       content: "",
-      published: false
+      published: false,
     });
   };
 
   const handleSubmitPost = async (e) => {
     e.preventDefault();
-    
+
     try {
       if (isEditMode) {
         await updatePost(postForm.id, postForm);
@@ -179,7 +205,9 @@ function PostsManage() {
       }
       handleCloseForm();
     } catch (err) {
-      toast.error(isEditMode ? "Failed to update post" : "Failed to create post");
+      toast.error(
+        isEditMode ? "Failed to update post" : "Failed to create post"
+      );
     }
   };
 
@@ -197,70 +225,137 @@ function PostsManage() {
     try {
       const updatedPost = {
         ...post,
-        published: !post.published
+        published: !post.published,
       };
       await updatePost(post.id, updatedPost);
-      toast.success(`Post status changed to ${updatedPost.published ? 'Published' : 'Draft'}`);
+      toast.success(
+        `Post status changed to ${
+          updatedPost.published ? "Published" : "Draft"
+        }`
+      );
     } catch (err) {
       toast.error("Failed to update post status");
     }
   };
 
   // Filter posts based on search and date filters
-  const filteredPosts = posts.filter(post => {
-    // Search filter
-    const matchesSearch = post.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         post.content?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Date filter
-    let matchesDate = true;
-    if (dateFilter.startDate) {
-      const startDate = new Date(dateFilter.startDate);
-      const postDate = new Date(post.createdAt);
-      matchesDate = matchesDate && postDate >= startDate;
+  const filteredPosts = posts
+    .filter((post) => {
+      // Search filter
+      const matchesSearch =
+        post.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        post.content?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Date filter
+      let matchesDate = true;
+      if (dateFilter.startDate) {
+        const startDate = new Date(dateFilter.startDate);
+        const postDate = new Date(post.createdAt);
+        matchesDate = matchesDate && postDate >= startDate;
+      }
+      if (dateFilter.endDate) {
+        const endDate = new Date(dateFilter.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of the day
+        const postDate = new Date(post.createdAt);
+        matchesDate = matchesDate && postDate <= endDate;
+      }
+
+      return matchesSearch && matchesDate;
+    })
+    .sort((a, b) => {
+      if (sortConfig.key === "title") {
+        return sortConfig.direction === "asc"
+          ? a.title.localeCompare(b.title)
+          : b.title.localeCompare(a.title);
+      } else if (sortConfig.key === "createdAt") {
+        return sortConfig.direction === "asc"
+          ? new Date(a.createdAt) - new Date(b.createdAt)
+          : new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return 0;
+    });
+  // Pagination calculations
+  const indexOfLastPost = currentPage * postsPerPage;
+  const indexOfFirstPost = indexOfLastPost - postsPerPage;
+  const currentPosts = filteredPosts.slice(indexOfFirstPost, indexOfLastPost);
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+
+  // Function to handle page change
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Function to generate page numbers array
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5; // Number of page numbers to show
+
+    if (totalPages <= maxVisiblePages) {
+      // If total pages are less than maxVisiblePages, show all
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first page
+      pageNumbers.push(1);
+
+      // Calculate start and end of visible page numbers
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+
+      // Adjust if at the start
+      if (currentPage <= 2) {
+        end = 4;
+      }
+      // Adjust if at the end
+      if (currentPage >= totalPages - 1) {
+        start = totalPages - 3;
+      }
+
+      // Add ellipsis if needed
+      if (start > 2) {
+        pageNumbers.push("...");
+      }
+
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i);
+      }
+
+      // Add ellipsis if needed
+      if (end < totalPages - 1) {
+        pageNumbers.push("...");
+      }
+
+      // Always show last page
+      pageNumbers.push(totalPages);
     }
-    if (dateFilter.endDate) {
-      const endDate = new Date(dateFilter.endDate);
-      endDate.setHours(23, 59, 59, 999); // End of the day
-      const postDate = new Date(post.createdAt);
-      matchesDate = matchesDate && postDate <= endDate;
-    }
-    
-    return matchesSearch && matchesDate;
-  }).sort((a, b) => {
-    if (sortConfig.key === "title") {
-      return sortConfig.direction === "asc" 
-        ? a.title.localeCompare(b.title)
-        : b.title.localeCompare(a.title);
-    } else if (sortConfig.key === "createdAt") {
-      return sortConfig.direction === "asc"
-        ? new Date(a.createdAt) - new Date(b.createdAt)
-        : new Date(b.createdAt) - new Date(a.createdAt);
-    }
-    return 0;
-  });
+
+    return pageNumbers;
+  };
 
   return (
     <div
       ref={pageRef}
-      className="md:min-h-[calc(100vh-7rem)] h-[85vh] py-6 md:overflow-hidden overflow-y-auto md:mt-0 -mt-5 w-full md:w-screen md:absolute left-0 md:top-12 relative flex flex-col px-4 md:px-8 lg:px-16"
-      style={{
-        background: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(6, 182, 212, 0.3) 0%, rgba(17, 24, 39, 0.95) 45%)`,
-      }}
+      className=" py-6  overflow-y-auto  max-w-full  relative flex flex-col px-4 md:px-8 lg:px-16"
+     
     >
       <Toaster />
-      
-      <div className="flex flex-col h-full">
+
+      <div className="flex flex-col h-full mt-14">
         <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white">Blog Post Management</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white">
+              Blog Post Management
+            </h1>
             <p className="text-gray-300 mt-2">
               View and manage all blog posts, track status, and update content
             </p>
           </div>
           <button
             onClick={handleAddPost}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition"
+            className="flex items-center gap-1 md:gap-2 px-2 md:text-base text-xs py-1 md:px-4 md:py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition"
           >
             <Plus size={18} />
             Add Post
@@ -296,10 +391,12 @@ function PostsManage() {
                 </svg>
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
               <div>
-                <label className="block text-gray-300 text-sm mb-1">Start Date</label>
+                <label className="block text-gray-300 text-sm mb-1">
+                  Start Date
+                </label>
                 <input
                   type="date"
                   name="startDate"
@@ -309,7 +406,9 @@ function PostsManage() {
                 />
               </div>
               <div>
-                <label className="block text-gray-300 text-sm mb-1">End Date</label>
+                <label className="block text-gray-300 text-sm mb-1">
+                  End Date
+                </label>
                 <input
                   type="date"
                   name="endDate"
@@ -328,10 +427,18 @@ function PostsManage() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <div className="text-gray-300">
-              {filteredPosts.length} {filteredPosts.length === 1 ? "post" : "posts"} found
+              {filteredPosts.length}{" "}
+              {filteredPosts.length === 1 ? "post" : "posts"} found
+              {filteredPosts.length > 0 && (
+                <span className="ml-2">
+                  (Showing {indexOfFirstPost + 1}-
+                  {Math.min(indexOfLastPost, filteredPosts.length)} of{" "}
+                  {filteredPosts.length})
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -343,9 +450,7 @@ function PostsManage() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
             </div>
           ) : error ? (
-            <div className="text-red-400 p-4 text-center">
-              {error}
-            </div>
+            <div className="text-red-400 p-4 text-center">{error}</div>
           ) : filteredPosts.length === 0 ? (
             <div className="text-gray-400 p-8 text-center">
               No posts found matching your criteria
@@ -355,7 +460,7 @@ function PostsManage() {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800 sticky top-0">
                   <tr>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("title")}
                     >
@@ -371,7 +476,7 @@ function PostsManage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Status
                     </th>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("createdAt")}
                     >
@@ -393,25 +498,34 @@ function PostsManage() {
                   </tr>
                 </thead>
                 <tbody className="bg-gray-900 bg-opacity-50 divide-y divide-gray-800">
-                  {filteredPosts.map((post) => (
+                  {currentPosts.map((post) => (
                     <tr key={post.id} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-200">
                           {post.title}
                         </div>
                         <div className="text-xs text-gray-400 truncate max-w-xs">
-                          {post.content?.substring(0, 60)}{post.content?.length > 60 ? '...' : ''}
+                          {post.content?.substring(0, 60)}
+                          {post.content?.length > 60 ? "..." : ""}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
+                        <button
                           onClick={() => handleToggleStatus(post)}
                           className="flex items-center gap-1 group"
-                          title={post.published ? "Click to unpublish" : "Click to publish"}
+                          title={
+                            post.published
+                              ? "Click to unpublish"
+                              : "Click to publish"
+                          }
                         >
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            post.published ? 'bg-green-100 text-green-800 group-hover:bg-yellow-100 group-hover:text-yellow-800' : 'bg-yellow-100 text-yellow-800 group-hover:bg-green-100 group-hover:text-green-800'
-                          } transition-colors`}>
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              post.published
+                                ? "bg-green-100 text-green-800 group-hover:bg-yellow-100 group-hover:text-yellow-800"
+                                : "bg-yellow-100 text-yellow-800 group-hover:bg-green-100 group-hover:text-green-800"
+                            } transition-colors`}
+                          >
                             {post.published ? (
                               <>
                                 <ToggleRight size={14} className="mr-1" />
@@ -472,6 +586,82 @@ function PostsManage() {
                   ))}
                 </tbody>
               </table>
+              {/* Pagination Controls */}
+              {filteredPosts.length > 0 && (
+                <div className="flex justify-center items-center space-x-2 mt-8 mb-4">
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === 1
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-cyan-400 text-gray-900 hover:bg-cyan-500"
+                    } transition-colors duration-300`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Page Numbers */}
+                  {getPageNumbers().map((number, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        typeof number === "number" && handlePageChange(number)
+                      }
+                      className={`px-3 py-1 rounded-md ${
+                        number === currentPage
+                          ? "bg-cyan-400 text-gray-900"
+                          : number === "..."
+                          ? "bg-transparent text-gray-400 cursor-default"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      } transition-colors duration-300`}
+                      disabled={number === "..."}
+                    >
+                      {number}
+                    </button>
+                  ))}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === totalPages
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-cyan-400 text-gray-900 hover:bg-cyan-500"
+                    } transition-colors duration-300`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -508,7 +698,9 @@ function PostsManage() {
             <form onSubmit={handleSubmitPost}>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Post Title*</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Post Title*
+                  </label>
                   <input
                     type="text"
                     name="title"
@@ -518,9 +710,11 @@ function PostsManage() {
                     className="w-full p-3 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-gray-700"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Content*</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Content*
+                  </label>
                   <textarea
                     name="content"
                     value={postForm.content}
@@ -530,7 +724,7 @@ function PostsManage() {
                     className="w-full p-3 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-gray-700"
                   ></textarea>
                 </div>
-                
+
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -555,7 +749,11 @@ function PostsManage() {
                 </button>
                 <button
                   type="submit"
-                  className={`px-4 py-2 ${isEditMode ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-cyan-600 hover:bg-cyan-700'} text-white rounded-md`}
+                  className={`px-4 py-2 ${
+                    isEditMode
+                      ? "bg-yellow-600 hover:bg-yellow-700"
+                      : "bg-cyan-600 hover:bg-cyan-700"
+                  } text-white rounded-md`}
                 >
                   {isEditMode ? "Update Post" : "Add Post"}
                 </button>
@@ -570,9 +768,7 @@ function PostsManage() {
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
             <div className="flex justify-between items-start p-6 border-b border-gray-700">
-              <h3 className="text-xl font-semibold text-white">
-                Post Details
-              </h3>
+              <h3 className="text-xl font-semibold text-white">Post Details</h3>
               <button
                 onClick={handleCloseDetails}
                 className="text-gray-400 hover:text-white"
@@ -596,27 +792,47 @@ function PostsManage() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Post Title</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Post Title
+                  </label>
                   <div className="text-white">{selectedPost.title}</div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Slug</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Slug
+                  </label>
                   <div className="text-white">{selectedPost.slug}</div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Created Date</label>
-                  <div className="text-white">{formatDate(selectedPost.createdAt)}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Created Date
+                  </label>
+                  <div className="text-white">
+                    {formatDate(selectedPost.createdAt)}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Last Updated</label>
-                  <div className="text-white">{selectedPost.updatedAt ? formatDate(selectedPost.updatedAt) : 'Not updated'}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Last Updated
+                  </label>
+                  <div className="text-white">
+                    {selectedPost.updatedAt
+                      ? formatDate(selectedPost.updatedAt)
+                      : "Not updated"}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Author</label>
-                  <div className="text-white">{selectedPost.author?.full_name || 'Unknown'}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Author
+                  </label>
+                  <div className="text-white">
+                    {selectedPost.author?.full_name || "Unknown"}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Status</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Status
+                  </label>
                   <div className="flex items-center">
                     {selectedPost.published ? (
                       <span className="flex items-center text-green-400">
@@ -630,10 +846,12 @@ function PostsManage() {
                   </div>
                 </div>
               </div>
-              
+
               {selectedPost.content && (
                 <div className="mb-6">
-                  <label className="block text-gray-400 text-sm mb-1">Content</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Content
+                  </label>
                   <div className="bg-gray-800 p-4 rounded-md text-gray-200 whitespace-pre-wrap">
                     {selectedPost.content}
                   </div>
@@ -667,32 +885,17 @@ function PostsManage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              Confirm Delete
-            </h3>
-            <p className="text-gray-300 mb-6">
-              Are you sure you want to delete post &quot;{postToAction?.title}&quot;? This action cannot be undone and will remove all associated data.
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={cancelAction}
-                className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                <Trash size={16} />
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+     {isDeleteConfirmOpen && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={cancelAction}
+          onConfirm={confirmDelete}
+          isLoading={isDeleting}
+          title="Confirm Delete"
+          message={`Are you sure you want to delete post ${postToAction?.title}? This action cannot be undone and will remove all associated data.`}
+          confirmButtonText="Delete"
+          cancelButtonText="Cancel"
+        />
       )}
     </div>
   );

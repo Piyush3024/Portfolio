@@ -2,20 +2,21 @@ import { useState, useEffect, useRef } from "react";
 import { toast, Toaster } from "react-hot-toast";
 import useUserStore from "../../stores/useUserStore.js";
 import { format } from "date-fns";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal.jsx";
 
 function AdminUserManagement() {
-  const { 
-    users, 
-    blockedUsers, 
-    getAllUsers, 
-    getBlockedUsers, 
-    deleteUser, 
-    blockUser, 
-    unblockUser, 
-    isLoading, 
-    error 
+  const {
+    users,
+    blockedUsers,
+    getAllUsers,
+    getBlockedUsers,
+    deleteUser,
+    blockUser,
+    unblockUser,
+    isLoading,
+    error,
   } = useUserStore();
-  
+
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState({
@@ -32,9 +33,13 @@ function AdminUserManagement() {
     key: "created_at",
     direction: "desc",
   });
-  
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
+
   const pageRef = useRef(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+ 
 
   // Initial data fetch
   useEffect(() => {
@@ -46,10 +51,12 @@ function AdminUserManagement() {
           await getBlockedUsers();
         }
       } catch (err) {
-        toast.error(`Failed to fetch ${activeTab === "all" ? "users" : "blocked users"}`);
+        toast.error(
+          `Failed to fetch ${activeTab === "all" ? "users" : "blocked users"}`
+        );
       }
     };
-    
+
     fetchData();
   }, [activeTab, getAllUsers, getBlockedUsers]);
 
@@ -58,7 +65,7 @@ function AdminUserManagement() {
     // Select source data based on active tab
     const sourceData = activeTab === "all" ? users : blockedUsers;
     let result = [...sourceData];
-    
+
     // Apply date filter if both dates are provided
     if (dateFilter.startDate && dateFilter.endDate) {
       const startDate = new Date(dateFilter.startDate);
@@ -98,22 +105,7 @@ function AdminUserManagement() {
   }, [users, blockedUsers, searchTerm, dateFilter, sortConfig, activeTab]);
 
   // Track mouse position for spotlight effect
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (pageRef.current) {
-        setMousePosition({
-          x: e.clientX,
-          y: e.clientY,
-        });
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
-  }, []);
+ 
 
   // Handler functions
   const handleSort = (key) => {
@@ -148,9 +140,9 @@ function AdminUserManagement() {
     setSelectedUser(null);
   };
 
-//   const handleViewDetails = (user) => {
-//     setSelectedUser(user);
-//   };
+  //   const handleViewDetails = (user) => {
+  //     setSelectedUser(user);
+  //   };
 
   const handleCloseDetails = () => {
     setSelectedUser(null);
@@ -172,7 +164,8 @@ function AdminUserManagement() {
 
   const confirmDelete = async () => {
     if (!userToAction) return;
-    
+    setIsDeleting(true);
+
     try {
       await deleteUser(userToAction.user_id);
       toast.success("User deleted successfully");
@@ -182,6 +175,7 @@ function AdminUserManagement() {
     } catch (err) {
       toast.error("Failed to delete user");
     } finally {
+      setIsDeleting(false);
       setIsDeleteConfirmOpen(false);
       setUserToAction(null);
     }
@@ -189,7 +183,8 @@ function AdminUserManagement() {
 
   const confirmBlock = async () => {
     if (!userToAction) return;
-    
+    setIsBlocking(true);
+
     try {
       await blockUser(userToAction.user_id, parseInt(blockDuration));
       toast.success(`User blocked for ${blockDuration} days`);
@@ -200,6 +195,7 @@ function AdminUserManagement() {
     } catch (err) {
       toast.error("Failed to block user");
     } finally {
+      setIsBlocking(false);
       setIsBlockConfirmOpen(false);
       setUserToAction(null);
     }
@@ -241,21 +237,83 @@ function AdminUserManagement() {
     }
   };
 
+  // Pagination calculations
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+
+  // Function to handle page change
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Function to generate page numbers array
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5; // Number of page numbers to show
+
+    if (totalPages <= maxVisiblePages) {
+      // If total pages are less than maxVisiblePages, show all
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first page
+      pageNumbers.push(1);
+
+      // Calculate start and end of visible page numbers
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+
+      // Adjust if at the start
+      if (currentPage <= 2) {
+        end = 4;
+      }
+      // Adjust if at the end
+      if (currentPage >= totalPages - 1) {
+        start = totalPages - 3;
+      }
+
+      // Add ellipsis if needed
+      if (start > 2) {
+        pageNumbers.push("...");
+      }
+
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i);
+      }
+
+      // Add ellipsis if needed
+      if (end < totalPages - 1) {
+        pageNumbers.push("...");
+      }
+
+      // Always show last page
+      pageNumbers.push(totalPages);
+    }
+
+    return pageNumbers;
+  };
+
   return (
     <div
       ref={pageRef}
-      className="md:min-h-[calc(100vh-7rem)] h-[85vh] py-6 md:overflow-hidden overflow-y-auto md:mt-0 -mt-5 w-full md:w-screen md:absolute left-0 md:top-12 relative flex flex-col px-4 md:px-8 lg:px-16"
-      style={{
-        background: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(6, 182, 212, 0.3) 0%, rgba(17, 24, 39, 0.95) 45%)`,
-      }}
+      className=" py-6  overflow-y-auto max-w-full  relative flex flex-col px-4 md:px-8 lg:px-16"
+     
     >
       <Toaster />
-      
-      <div className="flex flex-col h-full">
+
+      <div className="flex flex-col mt-14">
         <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-white">User Management</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-white">
+            User Management
+          </h1>
           <p className="text-gray-300 mt-2">
-            Manage user accounts, block problematic users, and monitor user activity
+            Manage user accounts, block problematic users, and monitor user
+            activity
           </p>
         </div>
 
@@ -311,10 +369,12 @@ function AdminUserManagement() {
                 </svg>
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
               <div>
-                <label className="block text-gray-300 text-sm mb-1">Start Date</label>
+                <label className="block text-gray-300 text-sm mb-1">
+                  Start Date
+                </label>
                 <input
                   type="date"
                   name="startDate"
@@ -324,7 +384,9 @@ function AdminUserManagement() {
                 />
               </div>
               <div>
-                <label className="block text-gray-300 text-sm mb-1">End Date</label>
+                <label className="block text-gray-300 text-sm mb-1">
+                  End Date
+                </label>
                 <input
                   type="date"
                   name="endDate"
@@ -343,10 +405,18 @@ function AdminUserManagement() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <div className="text-gray-300">
-              {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"} found
+              {filteredUsers.length}{" "}
+              {filteredUsers.length === 1 ? "user" : "users"} found
+              {filteredUsers.length > 0 && (
+                <span className="ml-2">
+                  (Showing {indexOfFirstUser + 1}-
+                  {Math.min(indexOfLastUser, filteredUsers.length)} of{" "}
+                  {filteredUsers.length})
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -358,9 +428,7 @@ function AdminUserManagement() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
             </div>
           ) : error ? (
-            <div className="text-red-400 p-4 text-center">
-              {error}
-            </div>
+            <div className="text-red-400 p-4 text-center">{error}</div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-gray-400 p-8 text-center">
               No users found matching your criteria
@@ -370,7 +438,7 @@ function AdminUserManagement() {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800 sticky top-0">
                   <tr>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("username")}
                     >
@@ -389,7 +457,7 @@ function AdminUserManagement() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Email
                     </th>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("created_at")}
                     >
@@ -413,7 +481,7 @@ function AdminUserManagement() {
                   </tr>
                 </thead>
                 <tbody className="bg-gray-900 bg-opacity-50 divide-y divide-gray-800">
-                  {filteredUsers.map((user) => (
+                  {currentUsers.map((user) => (
                     <tr key={user.user_id} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-200">
@@ -426,7 +494,9 @@ function AdminUserManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-300">{user.email}</div>
+                        <div className="text-sm text-gray-300">
+                          {user.email}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-300">
@@ -436,7 +506,9 @@ function AdminUserManagement() {
                       {activeTab === "blocked" && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-red-400">
-                            {user.blocked_until ? formatDate(user.blocked_until) : "Permanent"}
+                            {user.blocked_until
+                              ? formatDate(user.blocked_until)
+                              : "Permanent"}
                           </div>
                         </td>
                       )}
@@ -474,6 +546,82 @@ function AdminUserManagement() {
                   ))}
                 </tbody>
               </table>
+              {/* Pagination Controls */}
+              {filteredUsers.length > 0 && (
+                <div className="flex justify-center items-center space-x-2 mt-8 mb-4">
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === 1
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-cyan-400 text-gray-900 hover:bg-cyan-500"
+                    } transition-colors duration-300`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Page Numbers */}
+                  {getPageNumbers().map((number, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        typeof number === "number" && handlePageChange(number)
+                      }
+                      className={`px-3 py-1 rounded-md ${
+                        number === currentPage
+                          ? "bg-cyan-400 text-gray-900"
+                          : number === "..."
+                          ? "bg-transparent text-gray-400 cursor-default"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      } transition-colors duration-300`}
+                      disabled={number === "..."}
+                    >
+                      {number}
+                    </button>
+                  ))}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === totalPages
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-cyan-400 text-gray-900 hover:bg-cyan-500"
+                    } transition-colors duration-300`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -484,9 +632,7 @@ function AdminUserManagement() {
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
             <div className="flex justify-between items-start p-6 border-b border-gray-700">
-              <h3 className="text-xl font-semibold text-white">
-                User Details
-              </h3>
+              <h3 className="text-xl font-semibold text-white">User Details</h3>
               <button
                 onClick={handleCloseDetails}
                 className="text-gray-400 hover:text-white"
@@ -510,57 +656,95 @@ function AdminUserManagement() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Username</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Username
+                  </label>
                   <div className="text-white">{selectedUser.username}</div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Email</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Email
+                  </label>
                   <div className="text-white">{selectedUser.email}</div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">First Name</label>
-                  <div className="text-white">{selectedUser.first_name || 'Not provided'}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    First Name
+                  </label>
+                  <div className="text-white">
+                    {selectedUser.first_name || "Not provided"}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Last Name</label>
-                  <div className="text-white">{selectedUser.last_name || 'Not provided'}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Last Name
+                  </label>
+                  <div className="text-white">
+                    {selectedUser.last_name || "Not provided"}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Registration Date</label>
-                  <div className="text-white">{formatDate(selectedUser.created_at)}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Registration Date
+                  </label>
+                  <div className="text-white">
+                    {formatDate(selectedUser.created_at)}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Status</label>
-                  <div className={`${selectedUser.is_blocked ? 'text-red-400' : 'text-green-400'}`}>
-                    {selectedUser.is_blocked ? 'Blocked' : 'Active'}
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Status
+                  </label>
+                  <div
+                    className={`${
+                      selectedUser.is_blocked
+                        ? "text-red-400"
+                        : "text-green-400"
+                    }`}
+                  >
+                    {selectedUser.is_blocked ? "Blocked" : "Active"}
                   </div>
                 </div>
                 {selectedUser.is_blocked && selectedUser.blocked_until && (
                   <div>
-                    <label className="block text-gray-400 text-sm mb-1">Blocked Until</label>
-                    <div className="text-red-400">{formatDate(selectedUser.blocked_until)}</div>
+                    <label className="block text-gray-400 text-sm mb-1">
+                      Blocked Until
+                    </label>
+                    <div className="text-red-400">
+                      {formatDate(selectedUser.blocked_until)}
+                    </div>
                   </div>
                 )}
               </div>
-              
+
               {selectedUser.bio && (
                 <div className="mb-6">
-                  <label className="block text-gray-400 text-sm mb-1">Bio</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Bio
+                  </label>
                   <div className="bg-gray-800 p-4 rounded-md text-gray-200 whitespace-pre-wrap">
                     {selectedUser.bio}
                   </div>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Role</label>
-                  <div className="text-white capitalize">{selectedUser.role || 'User'}</div>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Role
+                  </label>
+                  <div className="text-white capitalize">
+                    {selectedUser.role || "User"}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Last Login</label>
+                  <label className="block text-gray-400 text-sm mb-1">
+                    Last Login
+                  </label>
                   <div className="text-white">
-                    {selectedUser.last_login ? formatDate(selectedUser.last_login) : 'Never'}
+                    {selectedUser.last_login
+                      ? formatDate(selectedUser.last_login)
+                      : "Never"}
                   </div>
                 </div>
               </div>
@@ -599,80 +783,99 @@ function AdminUserManagement() {
       )}
 
       {/* Delete Confirmation Modal */}
+    
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              Confirm Delete
-            </h3>
-            <p className="text-gray-300 mb-6">
-              Are you sure you want to delete user "{userToAction?.username}"? This action cannot be undone and will remove all associated data.
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={cancelAction}
-                className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteConfirmationModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={cancelAction}
+          onConfirm={confirmDelete}
+          isLoading={isDeleting}
+          title="Confirm Delete"
+          message={`Are you sure you want to delete user ${userToAction?.username}? This action cannot be undone and will remove all associated data.`}
+          confirmButtonText="Delete"
+          cancelButtonText="Cancel"
+        />
       )}
 
       {/* Block Confirmation Modal */}
-      {isBlockConfirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              Block User
-            </h3>
-            <p className="text-gray-300 mb-4">
-              You are about to block user "{userToAction?.username}". Blocked users will not be able to log in or access their account.
-            </p>
-            
-            <div className="mb-6">
-              <label className="block text-gray-300 text-sm mb-2">
-                Block Duration (days)
-              </label>
-              <select
-                value={blockDuration}
-                onChange={handleBlockDurationChange}
-                className="w-full p-3 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-gray-700"
+    {isBlockConfirmOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div className="bg-gray-900 rounded-lg max-w-md w-full p-6">
+      <h3 className="text-xl font-semibold text-white mb-4">
+        Block User
+      </h3>
+      <p className="text-gray-300 mb-4">
+        You are about to block user &quot;{userToAction?.username}&quot;.
+        Blocked users will not be able to log in or access their account.
+      </p>
+
+      <div className="mb-6">
+        <label className="block text-gray-300 text-sm mb-2">
+          Block Duration (days)
+        </label>
+        <select
+          value={blockDuration}
+          onChange={handleBlockDurationChange}
+          className="w-full p-3 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-gray-700"
+          disabled={isBlocking}
+        >
+          <option value="1">1 day</option>
+          <option value="3">3 days</option>
+          <option value="7">7 days</option>
+          <option value="14">14 days</option>
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="0">Permanent</option>
+        </select>
+      </div>
+
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={cancelAction}
+          className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+          disabled={isBlocking}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={confirmBlock}
+          className={`px-4 py-2 bg-yellow-600 text-white rounded-md flex items-center justify-center min-w-[100px] ${
+            isBlocking ? "opacity-75 cursor-not-allowed" : "hover:bg-yellow-700"
+          }`}
+          disabled={isBlocking}
+        >
+          {isBlocking ? (
+            <>
+              <svg 
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24"
               >
-                <option value="1">1 day</option>
-                <option value="3">3 days</option>
-                <option value="7">7 days</option>
-                <option value="14">14 days</option>
-                <option value="30">30 days</option>
-                <option value="90">90 days</option>
-                <option value="0">Permanent</option>
-              </select>
-            </div>
-            
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={cancelAction}
-                className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmBlock}
-                className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-              >
-                Block User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <circle 
+                  className="opacity-25" 
+                  cx="12" 
+                  cy="12" 
+                  r="10" 
+                  stroke="currentColor" 
+                  strokeWidth="4"
+                ></circle>
+                <path 
+                  className="opacity-75" 
+                  fill="currentColor" 
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Blocking...
+            </>
+          ) : (
+            "Block User"
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

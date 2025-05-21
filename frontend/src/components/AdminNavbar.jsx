@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast, Toaster } from "react-hot-toast";
 import {
   JhuniIcon,
@@ -9,77 +8,45 @@ import {
 } from "./icons";
 import { useTheme } from "../providers/ThemeProvider";
 import { siteConfig } from "../config/site";
-import useAuthStore from "../stores/useauthstore";
+import useAuthStore from "../stores/useAuthStore";
 
 const AdminNavbar = () => {
   const navigate = useNavigate();
-  // Add state to control whether the menu is open
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // Use the theme context
   const { theme, toggleTheme } = useTheme();
-  const { user, logout, isTokenValid, isAuthenticated } = useAuthStore();
-
+  const { logout, isAuthenticated, isTokenValid } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Check if user is not authenticated or token is invalid
+    if (!isAuthenticated || !isTokenValid) {
       logout();
       navigate("/");
-      toast.error("Please login to access admin panel");
+      toast.error("Session expired. Please login again.");
     }
-  }, [isAuthenticated, logout, navigate])
+  }, [isAuthenticated, isTokenValid, logout, navigate]);
 
-  // Function to close the menu
   const closeMenu = () => {
     setIsMenuOpen(false);
   };
 
-  // Handle token expiration
-
-    // Only proceed with logout if user is actually authenticated
-   ;
-  
- 
-
-  // Check token validity on component mount and periodically// Modified useEffect for token validation in AdminNavbar.jsx
-// useEffect(() => {
-//   // Skip token validation if user is not authenticated
-//   if (!isAuthenticated) return;
-  
-//   // Log to help with debugging
-//   console.log("Setting up token validation checks for authenticated user");
-  
-//   // Disable the initial check completely - let the periodic check handle it
-//   // This gives more time for login to complete properly
-  
-//   // Set up periodic token check every 2 minutes
-//   const tokenCheckInterval = setInterval(() => {
-//     // Log before check (for debugging)
-//     console.log("Running periodic token validation check");
-    
-//     if (!isTokenValid()) {
-//       console.log("Token validation failed - logging user out");
-//       handleTokenExpiration();
-//     } else {
-//       console.log("Token is still valid");
-//     }
-//   }, 100000); // Check every 2 minutes (increased from 1 minute)
-  
-//   // Clean up interval on component unmount
-//   return () => {
-//     clearInterval(tokenCheckInterval);
-//     console.log("Token validation checks cleared");
-//   };
-// }, [isAuthenticated]); // Only re-run when authentication status changes
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
 
   return (
-    <header className="fixed top-0 left-0 w-full bg-gray-100 dark:bg-gray-900 bg-opacity-90 backdrop-blur-md shadow-lg z-40 transition-all duration-300 border-b border-gray-200 dark:border-emerald-800">
+    <header className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gray-900/95 border-gray-800' 
+        : 'bg-white/95 border-gray-200'
+    } backdrop-blur-md shadow-lg border-b`}>
       <div className="container mx-auto px-4 py-3">
         <Toaster />
         <div className="flex justify-between items-center">
           {/* Brand Logo and Name */}
           <Link
             to="/"
-            className="flex justify-start items-center gap-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400"
+            className="flex justify-start items-center gap-1 text-2xl font-bold text-cyan-500 hover:text-cyan-400 transition-colors duration-300"
           >
             <JhuniIcon />
             <span>Jhuni</span>
@@ -87,8 +54,13 @@ const AdminNavbar = () => {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 focus:outline-none"
+            className={`md:hidden p-2 rounded-lg transition-colors duration-300 ${
+              theme === 'dark'
+                ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+            }`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
           >
             {isMenuOpen ? (
               <svg
@@ -132,7 +104,15 @@ const AdminNavbar = () => {
             <ul className="hidden lg:flex gap-6 justify-start ml-2">
               <li>
                 <Link
-                  className="text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:font-medium"
+                  className={`px-3 py-2 rounded-lg transition-all duration-300 ${
+                    isActive('/admin')
+                      ? theme === 'dark'
+                        ? 'text-cyan-400 bg-gray-800'
+                        : 'text-cyan-600 bg-gray-100'
+                      : theme === 'dark'
+                        ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+                  }`}
                   to="/admin"
                 >
                   Contacts
@@ -140,7 +120,15 @@ const AdminNavbar = () => {
               </li>
               <li>
                 <Link
-                  className="text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:font-medium"
+                  className={`px-3 py-2 rounded-lg transition-all duration-300 ${
+                    isActive('/adminUser')
+                      ? theme === 'dark'
+                        ? 'text-cyan-400 bg-gray-800'
+                        : 'text-cyan-600 bg-gray-100'
+                      : theme === 'dark'
+                        ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+                  }`}
                   to="/adminUser"
                 >
                   Users
@@ -148,7 +136,15 @@ const AdminNavbar = () => {
               </li>
               <li>
                 <Link
-                  className="text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:font-medium"
+                  className={`px-3 py-2 rounded-lg transition-all duration-300 ${
+                    isActive('/adminProject')
+                      ? theme === 'dark'
+                        ? 'text-cyan-400 bg-gray-800'
+                        : 'text-cyan-600 bg-gray-100'
+                      : theme === 'dark'
+                        ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+                  }`}
                   to="/adminProject"
                 >
                   Projects
@@ -156,7 +152,15 @@ const AdminNavbar = () => {
               </li>
               <li>
                 <Link
-                  className="text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:font-medium"
+                  className={`px-3 py-2 rounded-lg transition-all duration-300 ${
+                    isActive('/adminPost')
+                      ? theme === 'dark'
+                        ? 'text-cyan-400 bg-gray-800'
+                        : 'text-cyan-600 bg-gray-100'
+                      : theme === 'dark'
+                        ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+                  }`}
                   to="/adminPost"
                 >
                   Posts
@@ -164,7 +168,15 @@ const AdminNavbar = () => {
               </li>
               <li>
                 <Link
-                  className="text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:font-medium"
+                  className={`px-3 py-2 rounded-lg transition-all duration-300 ${
+                    isActive('/adminComment')
+                      ? theme === 'dark'
+                        ? 'text-cyan-400 bg-gray-800'
+                        : 'text-cyan-600 bg-gray-100'
+                      : theme === 'dark'
+                        ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+                  }`}
                   to="/adminComment"
                 >
                   Comments
@@ -172,13 +184,34 @@ const AdminNavbar = () => {
               </li>
             </ul>
 
+            {/* Theme Toggle Button */}
+            <button
+              className={`p-2 rounded-lg transition-colors duration-300 ${
+                theme === 'dark'
+                  ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                  : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+              }`}
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark" ? (
+                <SunFilledIcon className="text-yellow-300" size={20} />
+              ) : (
+                <MoonFilledIcon className="text-gray-500" size={20} />
+              )}
+            </button>
+
             {/* Auth Buttons */}
             <div className="hidden md:flex gap-2">
               <button
-                className="text-sm font-normal p-2 rounded-lg text-red-400 border border-red-400 bg-gray-800 hover:bg-red-500 hover:text-white transition duration-300"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  theme === 'dark'
+                    ? 'text-red-400 border border-red-400 hover:bg-red-500 hover:text-white'
+                    : 'text-red-600 border border-red-600 hover:bg-red-500 hover:text-white'
+                }`}
                 onClick={() => {
                   logout();
-                  navigate("/")
+                  navigate("/");
                   toast.success("Logout Successfully");
                 }}
               >
@@ -190,52 +223,62 @@ const AdminNavbar = () => {
 
         {/* Mobile menu */}
         {isMenuOpen && (
-          <nav className="md:hidden pt-4 pb-2 flex flex-col gap-4 border-t border-gray-300 dark:border-gray-700 mt-3 animate-fadeIn">
+          <nav className={`md:hidden pt-4 pb-2 flex flex-col gap-4 border-t ${
+            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+          } mt-3 animate-fadeIn`}>
             {/* Mobile Nav Items */}
-            {siteConfig.navItems.map((item) => (
+            {siteConfig.adminItems.map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
-                className="text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition duration-300 ease-in-out py-2"
+                className={`px-3 py-2 rounded-lg transition-all duration-300 ${
+                  isActive(item.href)
+                    ? theme === 'dark'
+                      ? 'text-cyan-400 bg-gray-800'
+                      : 'text-cyan-600 bg-gray-100'
+                    : theme === 'dark'
+                      ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                      : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+                }`}
                 onClick={closeMenu}
               >
                 {item.label}
               </Link>
             ))}
-            <div>
-              {/* Mobile Theme Toggle Button */}
-              <button
-                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                onClick={() => {
-                  toggleTheme();
-                  // Don't close the menu when toggling theme
-                }}
-                aria-label={
-                  theme === "dark"
-                    ? "Switch to light theme"
-                    : "Switch to dark theme"
-                }
-              >
-                {theme === "dark" ? (
-                  <SunFilledIcon className="text-yellow-300" size={20} />
-                ) : (
-                  <MoonFilledIcon className="text-gray-500" size={20} />
-                )}
-              </button>
-            </div>
+
+            {/* Mobile Theme Toggle Button */}
+            <button
+              className={`p-2 rounded-lg transition-colors duration-300 ${
+                theme === 'dark'
+                  ? 'text-gray-300 hover:text-cyan-400 hover:bg-gray-800'
+                  : 'text-gray-700 hover:text-cyan-600 hover:bg-gray-100'
+              }`}
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark" ? (
+                <SunFilledIcon className="text-yellow-300" size={20} />
+              ) : (
+                <MoonFilledIcon className="text-gray-500" size={20} />
+              )}
+            </button>
 
             {/* Mobile Auth Buttons */}
             <div className="flex gap-2 mt-2">
-            <button
-                  className="text-sm font-normal p-2 rounded-lg text-red-600 dark:text-red-400 border border-red-600 dark:border-red-400 bg-white dark:bg-gray-800 hover:bg-red-500 hover:text-white dark:hover:bg-red-500 dark:hover:text-white transition duration-300"
-                  onClick={() => {
-                    logout();
-                    closeMenu()
-                    toast.success("Logout Successfully");
-                  }}
-                >
-                  Logout
-                </button>
+              <button
+                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  theme === 'dark'
+                    ? 'text-red-400 border border-red-400 hover:bg-red-500 hover:text-white'
+                    : 'text-red-600 border border-red-600 hover:bg-red-500 hover:text-white'
+                }`}
+                onClick={() => {
+                  logout();
+                  closeMenu();
+                  toast.success("Logout Successfully");
+                }}
+              >
+                Logout
+              </button>
             </div>
           </nav>
         )}
